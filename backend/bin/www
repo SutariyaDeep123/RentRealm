@@ -19,7 +19,7 @@ app.set('port', port);
  * Create HTTP server.
  */
 const mongoose = require('mongoose')
-mongoose.connect('mongodb+srv://kakashi:kakashi106@cluster0.7ilspeq.mongodb.net/rentrealm').then(()=>console.log('database connected'))
+mongoose.connect(process.env.MONGODB_URI).then(()=>console.log('database connected'))
 var server = http.createServer(app);
 
 /**
