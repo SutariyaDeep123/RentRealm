@@ -1,0 +1,7 @@
+/sprint2
+/sprint1
+**/node_modules
+**/.history
+**/.env
+**/.env.local
+**/.env.development
