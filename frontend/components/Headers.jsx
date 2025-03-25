@@ -1,32 +1,97 @@
-import { cn } from "@/lib/utils";
-import Button from "./ui/Button"
-import { useUser } from "./ui/UserContext"
-import { FaRegCircleUser } from "react-icons/fa6";
+"use client"
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { isAuthenticated, getUser, logoutUser } from '@/utils/auth';
 
+export default function Navbar() {
+    const [user, setUser] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const router = useRouter();
 
-export default function Headers({ className }) {
-    const { user } = useUser()
+    useEffect(() => {
+        const checkAuth = () => {
+            if (isAuthenticated()) {
+                const userData = getUser();
+                setUser(userData);
+            }
+            setIsLoading(false);
+        };
+
+        checkAuth();
+    }, []);
+
+    const handleLogout = (e) => {
+        e.preventDefault();
+        logoutUser();
+        setUser(null);
+        // The redirect will be handled by logoutUser()
+    };
+
+    if (isLoading) {
+        return null; // or a loading spinner
+    }
+
     return (
-        <>
-            <header className={cn("flex justify-between bg-blue-600 text-white py-2 px-6", className)}>
-                <h1 className="text-3xl">RentRealm</h1>
+        <nav className="bg-white shadow-lg">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex justify-between h-16">
+                    <div className="flex">
+                        <Link href="/" className="flex-shrink-0 flex text-blue-600 font-bold text-3xl items-center">
+                            RentRealm
+                        </Link>
+                    </div>
 
-                {user.name ?
-                    <>
-                        <div className="flex gap-5">
-                            <div className="flex items-center gap-2 text-2xl">
-                                <FaRegCircleUser />
-                                <span>Hello {user.name}</span>
-                            </div>
-                            <a href="/add-listing"><Button className={"text-lg"}>+ Add</Button></a>
-                            <Button onClick={() => { localStorage.clear(); window.location.reload() }}>Logout</Button>
-                        </div>
-                    </> :
-                    <>
-                        <a href="/login"> <Button>Login</Button></a>
-                    </>
-                }
-            </header>
-        </>
-    )
-}
+                    <div className="flex items-center">
+                        {isAuthenticated() && user ? (
+                            <>
+                                <span className="text-gray-700 px-3">
+                                    Welcome, {user.name}
+                                </span>
+                                <a
+                                    href='/my-hotels'
+                                    className="ml-4 px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                                >
+                                    MY Hotels
+                                </a>
+                                <a
+                                    href='/my-listings'
+                                    className="ml-4 px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                                >
+                                    MY Property
+                                </a>
+                                <a
+                                    href='/add'
+                                    className="ml-4 px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                                >
+                                    + ADD
+                                </a>
+                                <button
+                                    onClick={handleLogout}
+                                    className="ml-4 px-4 py-2 rounded bg-red-500 text-white hover:bg-red-600"
+                                >
+                                    Logout
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <Link
+                                    href="/login"
+                                    className="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600"
+                                >
+                                    Login
+                                </Link>
+                                <Link
+                                    href="/signup"
+                                    className="ml-4 px-4 py-2 rounded border border-blue-500 text-blue-500 hover:bg-blue-50"
+                                >
+                                    Sign Up
+                                </Link>
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </nav>
+    );
+} 

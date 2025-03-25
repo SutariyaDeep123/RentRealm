@@ -4,10 +4,14 @@ import "./globals.css";
 import { Theme } from "@radix-ui/themes";
 import "@radix-ui/themes/styles.css";
 import { UserProvider } from "@/components/ui/UserContext";
-
-
+import { useEffect } from 'react';
+import { initializeAuth } from '@/utils/auth';
 
 export default function RootLayout({ children }) {
+  useEffect(() => {
+    initializeAuth();
+  }, []);
+
   return (
     <html lang="en">
       <body>

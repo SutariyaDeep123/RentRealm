@@ -31,6 +31,17 @@ const userSchema = new mongoose.Schema({
     coordinates: { type: [Number], default: [0, 0] }
   },
   createdAt: { type: Date, default: Date.now }
+}, {
+  toObject: { virtuals: true },
+  toJSON: { virtuals: true }
+});
+
+// Add virtual property for full name
+userSchema.virtual('name').get(function() {
+  if (this.lastName) {
+    return `${this.firstName} ${this.lastName}`;
+  }
+  return this.firstName;
 });
 
 module.exports = mongoose.model('User', userSchema);

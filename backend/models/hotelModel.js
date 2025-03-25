@@ -15,6 +15,7 @@ const hotelSchema = new mongoose.Schema({
     type: {
       type: String,
       enum: ['Point'],
+      default:"Point",
       required: true
     },
     coordinates: {
@@ -22,7 +23,7 @@ const hotelSchema = new mongoose.Schema({
       required: true
     }
   },
-  amenities: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  amenities: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Amenity' }],
   rooms: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Room' }],
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   createdAt: { type: Date, default: Date.now }

@@ -24,7 +24,7 @@ const listingSchema = new mongoose.Schema({
     description: String,
     mainImage:String,
     images: [String],
-    amenities: [{type: mongoose.Schema.Types.ObjectId, ref: 'User'}],
+    amenities: [{type: mongoose.Schema.Types.ObjectId, ref: 'Amenity'}],
     price: Number,
     availability: {
       startDate: Date,

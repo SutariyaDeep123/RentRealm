@@ -24,7 +24,7 @@ const SignUp = () => {
             return;
         }
 
-        axios.post(process.env.NEXT_PUBLIC_BACKEND_URL + "/signup", formData).then((data) => {
+        axios.post(process.env.NEXT_PUBLIC_BACKEND_URL + "/auth/register", formData).then((data) => {
             console.log(data, "=================")
             if (data.data) {
                 toast.success("Sign up successful")
@@ -34,7 +34,7 @@ const SignUp = () => {
             }
         }).catch((e) => {
             console.log(e)
-            toast.error(e.response.data.error.message)
+            toast.error(e.response?.data?.error?.message)
         })
     };
     function formChange(e){
