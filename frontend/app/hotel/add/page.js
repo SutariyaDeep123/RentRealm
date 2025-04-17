@@ -34,6 +34,9 @@ export default function AddHotel() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [position, setPosition] = useState([28.6139, 77.2090]); // Default to Delhi
+    const [amenities, setAmenities] = useState([]);
+    const [selectedAmenities, setSelectedAmenities] = useState([]);
+
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -54,6 +57,26 @@ export default function AddHotel() {
         mainImage: null,
         additionalImages: []
     });
+    const toggleAmenity = (amenityId) => {
+        setSelectedAmenities(prev => {
+            const updatedAmenities = prev.includes(amenityId)
+                ? prev.filter(id => id !== amenityId)
+                : [...prev, amenityId];
+            console.log("Updated Amenities:", updatedAmenities);
+            return updatedAmenities;
+        });
+    };
+    
+    
+
+    useEffect(() => {
+        // Fetch amenities from backend
+        axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/amenities`)
+            .then(response => {
+                setAmenities(response.data.data);
+            })
+            .catch(error => console.error('Error fetching amenities:', error));
+    }, []);
 
     // Update coordinates when map position changes
     useEffect(() => {
@@ -73,15 +96,15 @@ export default function AddHotel() {
                 `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
             );
             const address = response.data.address;
-            
+
             setFormData(prev => ({
                 ...prev,
                 address: {
-                    street: address.road || address.street || '',
-                    city: address.city || address.town || '',
-                    state: address.state || '',
-                    country: address.country || '',
-                    zip: address.postcode || ''
+                    street: address?.road || address?.street || '',
+                    city: address?.city || address?.town || '',
+                    state: address?.state || '',
+                    country: address?.country || '',
+                    zip: address?.postcode || ''
                 }
             }));
         } catch (error) {
@@ -141,7 +164,7 @@ export default function AddHotel() {
 
         try {
             const formDataObj = new FormData();
-            
+
             // Append hotel data
             Object.keys(formData).forEach(key => {
                 if (typeof formData[key] === 'object') {
@@ -150,12 +173,12 @@ export default function AddHotel() {
                     formDataObj.append(key, formData[key]);
                 }
             });
-
+            formDataObj.append('amenities',selectedAmenities)
             // Append images
             if (images.mainImage) {
                 formDataObj.append('mainImage', images.mainImage);
             }
-            
+
             if (images.additionalImages.length > 0) {
                 images.additionalImages.forEach(image => {
                     formDataObj.append('images', image);
@@ -179,7 +202,7 @@ export default function AddHotel() {
     return (
         <div className="max-w-4xl mx-auto p-6">
             <h1 className="text-3xl font-bold mb-8">Add New Hotel</h1>
-            
+
             {error && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                     {error}
@@ -195,7 +218,7 @@ export default function AddHotel() {
                         name="name"
                         value={formData.name}
                         onChange={handleInputChange}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         required
                     />
                 </div>
@@ -207,7 +230,7 @@ export default function AddHotel() {
                         value={formData.description}
                         onChange={handleInputChange}
                         rows={4}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         required
                     />
                 </div>
@@ -219,7 +242,7 @@ export default function AddHotel() {
                         name="price"
                         value={formData.price}
                         onChange={handleInputChange}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                         required
                     />
                 </div>
@@ -253,7 +276,7 @@ export default function AddHotel() {
                             name="address.street"
                             value={formData.address.street}
                             onChange={handleInputChange}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                             required
                         />
                     </div>
@@ -265,7 +288,7 @@ export default function AddHotel() {
                             name="address.city"
                             value={formData.address.city}
                             onChange={handleInputChange}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                             required
                         />
                     </div>
@@ -277,7 +300,7 @@ export default function AddHotel() {
                             name="address.state"
                             value={formData.address.state}
                             onChange={handleInputChange}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                             required
                         />
                     </div>
@@ -289,12 +312,33 @@ export default function AddHotel() {
                             name="address.zip"
                             value={formData.address.zip}
                             onChange={handleInputChange}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                             required
                         />
                     </div>
                 </div>
-
+                <div>
+                    <label className="block text-sm mb-2">Amenities</label>
+                    <div className="grid grid-cols-2 gap-y-4 gap-x-2">
+                        {amenities.map((amenity) => (
+                            <div
+                                key={amenity._id}
+                                className={`flex flex-col items-center justify-center p-2 h-18 rounded-lg border ${selectedAmenities.includes(amenity.id)
+                                        ? 'border-blue-600 bg-blue-50'
+                                        : 'border-gray-300'
+                                    } cursor-pointer`}
+                                onClick={() => toggleAmenity(amenity.id)}
+                            >
+                                <img
+                                    src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/${amenity.icon}`}
+                                    alt={amenity.name}
+                                    className="w-10 h-10"
+                                />
+                                <span className='text-xs'>{amenity.name}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
                 {/* Image Upload Section */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Main Image</label>

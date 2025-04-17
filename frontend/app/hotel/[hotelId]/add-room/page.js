@@ -39,12 +39,13 @@ export default function AddRoom() {
             .catch(error => console.error('Error fetching amenities:', error));
     }, []);
     const toggleAmenity = (amenityId) => {
-        setSelectedAmenities(prev =>
-            prev.includes(amenityId)
+        setSelectedAmenities(prev => {
+            const updatedAmenities = prev.includes(amenityId)
                 ? prev.filter(id => id !== amenityId)
-                : [...prev, amenityId]
-        );
-        console.log(amenities)
+                : [...prev, amenityId];
+            console.log("Updated Amenities:", updatedAmenities);
+            return updatedAmenities;
+        });
     };
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -183,12 +184,12 @@ export default function AddRoom() {
                     <div className="grid grid-cols-6 gap-y-4 gap-x-2">
                         {amenities.map((amenity) => (
                             <div
-                                key={amenity._id}
-                                className={`flex flex-col items-center justify-center p-2 h-18 rounded-lg border ${selectedAmenities.includes(amenity._id)
+                                key={amenity.id}
+                                className={`flex flex-col items-center justify-center p-2 h-18 rounded-lg border ${selectedAmenities.includes(amenity.id)
                                         ? 'border-blue-600 bg-blue-50'
                                         : 'border-gray-300'
                                     } cursor-pointer`}
-                                onClick={() => toggleAmenity(amenity._id)}
+                                onClick={() => toggleAmenity(amenity.id)}
                             >
                                 <img
                                     src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/${amenity.icon}`}

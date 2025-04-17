@@ -6,11 +6,12 @@ const transporter = nodemailer.createTransport({
         pass: process.env.MAIL_PASS
     }
 });
-async function sendEmail(email, subject, html) {
+async function sendEmail(email, subject, html,attachments) {
     await transporter.sendMail({
         to: email,
         subject: subject,
-        html: html
+        html: html,
+        attachments:attachments?attachments:undefined
     });
     return true;
 }

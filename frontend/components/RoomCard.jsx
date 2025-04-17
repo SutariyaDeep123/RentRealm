@@ -12,7 +12,7 @@ export default function RoomCard({ room, hotelId }) {
 
     return (
         <div 
-            className="border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+            className="border rounded-lg p-4 hover:bg-gray-300 border-gray-400 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
             onClick={handleClick}
         >
             <div className="flex gap-4">
@@ -34,7 +34,6 @@ export default function RoomCard({ room, hotelId }) {
                             <span>Max {room?.type === 'single' ? '1' : room?.type === 'double' ? '2' : '4'} guests</span>
                         </div>
                         <div className="flex items-center">
-                            <DollarSign className="w-5 h-5 mr-1" />
                             <span>${room?.price}/night</span>
                         </div>
                     </div>
@@ -43,9 +42,9 @@ export default function RoomCard({ room, hotelId }) {
                         {room?.amenities?.map((amenity) => (
                             <span 
                                 key={amenity?._id}
-                                className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm"
+                                className="border border-gray-600  p-1 rounded-full text-sm"
                             >
-                                {amenity?.name}
+                                <img src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/amenities/${amenity.icon}`} className='w-6'/>
                             </span>
                         ))}
                     </div>

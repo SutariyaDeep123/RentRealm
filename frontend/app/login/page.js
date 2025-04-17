@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { loginUser } from '@/utils/auth';
+import { toast } from 'react-toastify';
 
 export default function Login() {
     const [formData, setFormData] = useState({
@@ -26,7 +27,9 @@ export default function Login() {
             loginUser(response.data.data);
             window.location.href = '/';
         } catch (err) {
-            setError(err.response?.data?.message || 'An error occurred');
+            console.log(err)
+            toast.error(err.response?.data?.error?.message || 'An error occurred')
+            setError(err.response?.data?.error?.message || 'An error occurred');
         } finally {
             setLoading(false);
         }

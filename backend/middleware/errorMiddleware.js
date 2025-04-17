@@ -6,6 +6,7 @@ function errorMiddleware(handler) {
       const result = await handler(req, res, next);
       res.json(new ApiResponse(result));
     } catch (error) {
+      console.error('Error occurred:', error);
       next(error);
     }
   };

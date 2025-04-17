@@ -33,7 +33,7 @@ export default function Navbar() {
     }
 
     return (
-        <nav className="bg-white shadow-lg">
+        <nav className="bg-white shadow-lg sticky top-0 z-10">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between h-16">
                     <div className="flex">
@@ -45,27 +45,50 @@ export default function Navbar() {
                     <div className="flex items-center">
                         {isAuthenticated() && user ? (
                             <>
+
                                 <span className="text-gray-700 px-3">
                                     Welcome, {user.name}
                                 </span>
-                                <a
-                                    href='/my-hotels'
-                                    className="ml-4 px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-                                >
-                                    MY Hotels
-                                </a>
-                                <a
-                                    href='/my-listings'
-                                    className="ml-4 px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-                                >
-                                    MY Property
-                                </a>
-                                <a
-                                    href='/add'
-                                    className="ml-4 px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
-                                >
-                                    + ADD
-                                </a>
+                                {user.role === 'admin' && (
+                                    <a
+                                        href='/admin/dashboard'
+                                        className="ml-4 px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                                    >
+                                        Admin
+                                    </a>
+                                )}
+                                {
+                                    user.role === 'user' && (
+
+                                        <>
+                                            <a
+                                                href='/my-hotels'
+                                                className="ml-4 px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                                            >
+                                                MY Hotels
+                                            </a>
+                                            <a
+                                                href='/my-listings'
+                                                className="ml-4 px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                                            >
+                                                MY Property
+                                            </a>
+                                            <a
+                                                href='/add'
+                                                className="ml-4 px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                                            >
+                                                + ADD
+                                            </a>
+                                            <a
+                                                href='/bookings'
+                                                className="ml-4 px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                                            >
+                                                My Bookings
+                                            </a>
+                                        </>
+                                    )
+                                }
+
                                 <button
                                     onClick={handleLogout}
                                     className="ml-4 px-4 py-2 rounded bg-red-500 text-white hover:bg-red-600"

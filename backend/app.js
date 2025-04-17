@@ -13,6 +13,9 @@ var hotelRouter = require('./routes/hotel');
 var amenitiesRouter = require('./routes/amenities');
 var roomRouter = require('./routes/room');
 var bookingRouter = require('./routes/booking');
+var adminRouter = require('./routes/admin');
+const paymentRoutes = require('./routes/payment');
+
 const ErrorHandler = require('./utils/ErrorHandler');
 const ApiError = require('./errors/ApiError');
 const cors = require('cors');
@@ -38,7 +41,8 @@ app.use('/hotels', hotelRouter);
 app.use('/amenities', amenitiesRouter);
 app.use('/rooms', roomRouter);
 app.use('/booking', bookingRouter);
-
+app.use('/admin', adminRouter);
+app.use('/payment', paymentRoutes);
 // catch 404 and forward to error handler
 app.use("*",function(req, res, next) {
   next(ApiError.notFound());

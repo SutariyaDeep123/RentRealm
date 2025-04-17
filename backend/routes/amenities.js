@@ -7,6 +7,7 @@ const verifyToken = require('../middleware/authMiddleware');
 const errorMiddleware = require('../middleware/errorMiddleware');
 const ApiError = require('../errors/ApiError');
 const Amenity = require('../models/amenityModel');
+const { verifyAdmin } = require('../middleware/verifyAdmin');
 
 // Configure multer for SVG upload
 const storage = multer.diskStorage({
@@ -32,7 +33,7 @@ const fileFilter = (req, file, cb) => {
     }
 };
 
-const upload = multer({ 
+const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
     limits: {
@@ -49,8 +50,8 @@ const isAdmin = errorMiddleware(async (req, res, next) => {
 });
 
 // Add new amenity (admin only)
-router.post('/', verifyToken, (req, res, next) => {
-    upload(req, res, function(err) {
+router.post('/', verifyToken, verifyAdmin, (req, res, next) => {
+    upload(req, res, function (err) {
         if (err instanceof multer.MulterError) {
             next(new ApiError(400, `Upload error: ${err.message}`));
             return;
@@ -62,7 +63,7 @@ router.post('/', verifyToken, (req, res, next) => {
     });
 }, errorMiddleware(async (req, res) => {
     const { name } = req.body;
-    
+
     if (!req.file) {
         throw new ApiError(400, 'Icon file is required');
     }
@@ -88,8 +89,8 @@ router.get('/', errorMiddleware(async (req, res) => {
 }));
 
 // Update amenity (admin only)
-router.put('/:id', verifyToken, isAdmin, (req, res, next) => {
-    upload(req, res, function(err) {
+router.put('/:id', verifyToken, verifyAdmin, (req, res, next) => {
+    upload(req, res, function (err) {
         if (err instanceof multer.MulterError) {
             next(new ApiError(400, `Upload error: ${err.message}`));
             return;
@@ -131,7 +132,7 @@ router.put('/:id', verifyToken, isAdmin, (req, res, next) => {
 }));
 
 // Delete amenity (admin only)
-router.delete('/:id', verifyToken, isAdmin, errorMiddleware(async (req, res) => {
+router.delete('/:id', verifyToken, verifyAdmin, errorMiddleware(async (req, res) => {
     const amenity = await Amenity.findById(req.params.id);
     if (!amenity) {
         throw new ApiError(404, 'Amenity not found');

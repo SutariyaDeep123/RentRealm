@@ -6,16 +6,23 @@ import SearchBar from "@/components/SearchBar";
 import ListingSidebar from "@/components/ListingSidebar";
 import HotelSidebar from "@/components/HotelSidebar";
 import Products from "@/components/Products";
+import Pagination from "@/components/Pagination";
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState('listing'); // 'listing' or 'hotel'
+  const [activeTab, setActiveTab] = useState('listing'); 
   const [items, setItems] = useState([]);
   const [filters, setFilters] = useState({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    pages: 1
+  });
 
   useEffect(() => {
     fetchData();
-  }, [activeTab, filters]);
+  }, [activeTab, filters, pagination.page]);
 
   const fetchData = async () => {
     try {
@@ -23,9 +30,14 @@ export default function Home() {
         ? `${process.env.NEXT_PUBLIC_BACKEND_URL}/listing`
         : `${process.env.NEXT_PUBLIC_BACKEND_URL}/hotels`;
 
-      // Construct query parameters based on filters
+      // Construct query parameters based on filters and pagination
       const params = new URLSearchParams();
 
+      // Pagination params
+      params.append('page', pagination.page);
+      params.append('limit', pagination.limit);
+
+      // Filter params
       if (filters.priceRange) {
         params.append('minPrice', filters.priceRange[0]);
         params.append('maxPrice', filters.priceRange[1]);
@@ -47,11 +59,35 @@ export default function Home() {
         params.append('rating', filters.rating);
       }
 
+      if (filters.city) {
+        params.append('city', filters.city);
+      }
+
       const response = await axios.get(`${endpoint}?${params.toString()}`);
-      setItems(response.data.data.listings || response.data.data.hotels);
+      
+      console.log(response.data, "=================data")
+      if (activeTab === 'listing') {
+        setItems(response.data.data.listings || []);
+        setPagination(prev => ({
+          ...prev,
+          total: response.data.data.pagination.total,
+          pages: response.data.data.pagination.pages
+        }));
+      } else {
+        setItems(response.data.data.hotels || []);
+        setPagination(prev => ({
+          ...prev,
+          total: response.data.data.pagination.total,
+          pages: response.data.data.pagination.pages
+        }));
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
     }
+  };
+
+  const handlePageChange = (newPage) => {
+    setPagination(prev => ({ ...prev, page: newPage }));
   };
 
   return (
@@ -65,7 +101,10 @@ export default function Home() {
               ? 'bg-blue-600 text-white'
               : 'bg-gray-200'
           }`}
-          onClick={() => setActiveTab('listing')}
+          onClick={() => {
+            setActiveTab('listing');
+            setPagination(prev => ({ ...prev, page: 1 }));
+          }}
         >
           Listings
         </button>
@@ -75,7 +114,10 @@ export default function Home() {
               ? 'bg-blue-600 text-white'
               : 'bg-gray-200'
           }`}
-          onClick={() => setActiveTab('hotel')}
+          onClick={() => {
+            setActiveTab('hotel');
+            setPagination(prev => ({ ...prev, page: 1 }));
+          }}
         >
           Hotels
         </button>
@@ -85,19 +127,29 @@ export default function Home() {
         {activeTab === 'listing' ? (
           <ListingSidebar
             open={sidebarOpen}
-            onFiltersChange={setFilters}
+            onFiltersChange={(newFilters) => {
+              setFilters(newFilters);
+              setPagination(prev => ({ ...prev, page: 1 }));
+            }}
           />
         ) : (
           <HotelSidebar
             open={sidebarOpen}
-            onFiltersChange={setFilters}
+            onFiltersChange={(newFilters) => {
+              setFilters(newFilters);
+              setPagination(prev => ({ ...prev, page: 1 }));
+            }}
           />
         )}
 
         <div className="lg:ml-72">
-          <SearchBar className="py-6 border border-b-2" />
           <div>
             <Products data={items} type={activeTab} />
+            <Pagination 
+              currentPage={pagination.page}
+              totalPages={pagination.pages}
+              onPageChange={handlePageChange}
+            />
           </div>
         </div>
       </div>

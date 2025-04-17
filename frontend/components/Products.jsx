@@ -10,10 +10,23 @@ export default function Products({ data, type = 'listing' }) {
         router.push(`/${type}/${id}`);
     };
 
+    const getPriceLabel = (item) => {
+        if (type === 'hotel') {
+            return `${item.rooms?.[0]?.price || 0} - ${item.rooms?.[item.rooms.length - 1]?.price || 0}/night`;
+        }
+        
+        switch(item.type) {
+            case 'sell': return item.price;
+            case 'rent': return `${item.price}/month`;
+            case 'temporary_rent': return `${item.price}/night`;
+            default: return item.price;
+        }
+    };
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
             {data?.map((item) => (
-                <div 
+                <div
                     key={item._id}
                     className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-300"
                     onClick={() => handleClick(item._id)}
@@ -28,17 +41,14 @@ export default function Products({ data, type = 'listing' }) {
                     </div>
                     <div className="p-4">
                         <h3 className="text-lg font-semibold mb-2">{item.name}</h3>
-                        <div className="flex items-center gap-2 text-gray-600 mb-2">
-                            <MapPin className="w-4 h-4" />
-                            <span>{item.address?.city}, {item.address?.country}</span>
-                        </div>
+
                         <div className="flex justify-between items-center">
+                            <div className="flex items-center">
+                                <MapPin className="w-5 h-5 mr-1" />
+                                <span>{`${item?.address?.city}, ${item?.address?.country}`}</span>
+                            </div>
                             <div className="text-lg font-semibold">
-                                ${type === 'hotel' 
-                                    ? `${item.rooms?.[0]?.price || 0} - ${item.rooms?.[item.rooms.length - 1]?.price || 0}`
-                                    : item.price
-                                }
-                                <span className="text-sm text-gray-600">/night</span>
+                                ${getPriceLabel(item)}
                             </div>
                         </div>
                     </div>

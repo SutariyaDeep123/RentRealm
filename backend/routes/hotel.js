@@ -13,6 +13,9 @@ const fs = require('fs');
 const verifyToken = require('../middleware/authMiddleware');
 const { json } = require('stream/consumers');
 
+
+
+
 // Configure multer for hotel images
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -56,17 +59,18 @@ const upload = multer({
     { name: 'mainImage', maxCount: 1 },
     { name: 'images', maxCount: 5 }
 ]);
-router.get('/my-hotels', verifyToken, async (req, res) => {
-    try {
+
+
+
+
+router.get('/my-hotels', verifyToken, errorMiddleware(async (req, res) => {
         const hotels = await hotelModel.find({ owner: req.user._id })
             .populate('rooms')
             .sort('-createdAt');
 
-        res.json(hotels);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
+        return hotels;
+   
+}));
 
 // Get all hotels with filters
 router.get('/', errorMiddleware(async (req, res) => {
@@ -86,23 +90,25 @@ router.get('/', errorMiddleware(async (req, res) => {
     }
 
     if (amenities) {
-        query.amenities = { 
-            $all: Array.isArray(amenities) ? amenities : [amenities] 
+        query.amenities = {
+            $all: Array.isArray(amenities) ? amenities : [amenities]
         };
     }
 
+    query.rooms
     // First find hotels that match basic criteria
-    let hotels = await hotelModel.find(query)
+    let hotels = await hotelModel.find({ ...query, $expr: { $gt: [{ $size: "$rooms" }, 0] } })
         .populate('amenities', 'name icon')
         .populate('owner', 'name email')
         .populate('rooms')
         .sort(sort);
 
+    console.log("hotels", hotels)
     // Filter by room types and price if specified
     if (roomTypes) {
         hotels = hotels.filter(hotel => {
             const hasMatchingRooms = hotel.rooms.some(room => {
-                const matchesType = !roomTypes || 
+                const matchesType = !roomTypes ||
                     (Array.isArray(roomTypes) ? roomTypes.includes(room.type) : room.type === roomTypes);
                 return matchesType;
             });
@@ -161,12 +167,17 @@ router.get('/:hotelId', errorMiddleware(async (req, res) => {
     const hotel = await hotelModel.findById(req.params.hotelId)
         .populate('amenities', 'name icon')
         .populate('owner', 'name email')
-        .populate('rooms');
-    
+        .populate({
+            path: 'rooms',
+            populate: {
+                path: 'amenities',
+            },
+        });
+
     if (!hotel) {
         throw new ApiError(404, 'Hotel not found');
     }
-    
+
     // Transform the response to include full image URLs
     const hotelObj = hotel.toObject();
 
@@ -182,7 +193,7 @@ router.get('/:hotelId', errorMiddleware(async (req, res) => {
     if (hotelObj.amenities) {
         hotelObj.amenities = hotelObj.amenities.map(amenity => ({
             ...amenity,
-            icon: amenity.icon ? `/amenities/${amenity.icon}` : null
+            icon: amenity.icon ? `/${amenity.icon}` : null
         }));
     }
 
@@ -193,90 +204,88 @@ router.get('/:hotelId', errorMiddleware(async (req, res) => {
             images: room.images ? room.images.map(img => `/rooms/${img}`) : []
         }));
     }
-    
+
     return hotelObj;
 }));
 
-// Add new hotel
-router.post('/',verifyToken, (req, res, next) => {
-    upload(req, res, function(err) {
-        if (err instanceof multer.MulterError) {
-            return next(new ApiError(400, `Upload error: ${err.message}`));
-        } else if (err) {
-            return next(err);
-        }
-        next();
-    });
-}, errorMiddleware(async (req, res) => {
-    const hotelData = { ...req.body };
-    console.log(hotelData)
-    // Handle location data
-    if (typeof req.body.location === 'string') {
-        hotelData.location = JSON.parse(req.body.location);
+const consoleHotel = (req, res, next) => {
+    console.log("==========hotel==================", req.body)
+    next();
+}
+
+
+// GET /hotels - Paginated hotel list with filters
+router.get('/', errorMiddleware(async (req, res) => {
+    const {
+        page = 1,
+        limit = 10,
+        sort = '-createdAt',
+        city,
+        amenities,
+        owner
+    } = req.query;
+
+    const query = {};
+
+    if (city) {
+        query['address.city'] = new RegExp(city, 'i');
     }
 
-    // Handle amenities
-    if (typeof req.body.amenities === 'string') {
-        hotelData.amenities = JSON.parse(req.body.amenities);
-    }
-
-    // Handle files using the stored filenames
-    if (req.files) {
-        if (req.files.mainImage) {
-            hotelData.mainImage = req.files.mainImage[0].filename;
-        }
-        if (req.files.images) {
-            hotelData.images = req.files.images.map(file => file.filename);
-        }
-    }
-
-    // Add owner
-    console.log(req.user)
-    hotelData.owner = req.user._id;
-
-    // Ensure location is in correct GeoJSON format
-    if (hotelData.location && Array.isArray(hotelData.location.coordinates)) {
-        hotelData.location = {
-            type: 'Point',
-            coordinates: [
-                parseFloat(hotelData.location.coordinates[0]),
-                parseFloat(hotelData.location.coordinates[1])
-            ]
+    if (amenities) {
+        query.amenities = {
+            $all: Array.isArray(amenities) ? amenities : [amenities]
         };
     }
 
-    // Set default location if not provided
-    if (!hotelData.location) {
-        hotelData.location = {
-            type: 'Point',
-            coordinates: [0, 0] // Default coordinates
-        };
+    if (owner) {
+        query.owner = owner;
     }
 
-    // Log the data before saving
-    console.log('Hotel Data before save:', {
-        ...hotelData,
-        files: req.files // Log files information
+    // Fetch hotels
+    const hotels = await hotelModel.find(query)
+        .populate('amenities', 'name icon')
+        .populate('owner', 'name email')
+        .sort(sort)
+        .skip((page - 1) * limit)
+        .limit(parseInt(limit));
+
+    const transformedHotels = hotels.map(hotel => {
+        const hotelObj = hotel.toObject();
+
+        if (hotelObj.mainImage) {
+            hotelObj.mainImage = `/uploads/hotels/${hotelObj.mainImage}`;
+        }
+
+        if (hotelObj.images && hotelObj.images.length > 0) {
+            hotelObj.images = hotelObj.images.map(img => `/uploads/hotels/${img}`);
+        }
+
+        if (hotelObj.amenities) {
+            hotelObj.amenities = hotelObj.amenities.map(amenity => ({
+                ...amenity,
+                icon: amenity.icon ? `/amenities/${amenity.icon}` : null
+            }));
+        }
+
+        return hotelObj;
     });
 
-    const hotel = new hotelModel(hotelData);
-    await hotel.save();
+    const total = await hotelModel.countDocuments(query);
 
-    // Transform the response to include full image URLs
-    const response = hotel.toObject();
-    if (response.mainImage) {
-        response.mainImage = `/uploads/hotels/${response.mainImage}`;
-    }
-    if (response.images && response.images.length > 0) {
-        response.images = response.images.map(img => `/uploads/hotels/${img}`);
-    }
-
-    return response;
+    return res.json({
+        hotels: transformedHotels,
+        pagination: {
+            total,
+            page: parseInt(page),
+            pages: Math.ceil(total / limit)
+        }
+    });
 }));
+
 
 // Update hotel
 router.put('/:hotelId', verifyToken, (req, res, next) => {
-    upload(req, res, function(err) {
+    upload(req, res, function (err) {
         if (err instanceof multer.MulterError) {
             return next(new ApiError(400, `Upload error: ${err.message}`));
         } else if (err) {
@@ -285,9 +294,9 @@ router.put('/:hotelId', verifyToken, (req, res, next) => {
         next();
     });
 }, errorMiddleware(async (req, res) => {
-    const hotel = await hotelModel.findOne({ 
+    const hotel = await hotelModel.findOne({
         _id: req.params.hotelId,
-        owner: req.user._id 
+        owner: req.user._id
     });
 
     if (!hotel) {
@@ -295,15 +304,17 @@ router.put('/:hotelId', verifyToken, (req, res, next) => {
     }
 
     const updates = { ...req.body };
-
+    console.log(updates, "=====updates=========")
     // Handle location data
     if (typeof req.body.location === 'string') {
         updates.location = JSON.parse(req.body.location);
     }
+    if (typeof req.body.address === 'string') {
+        updates.address = JSON.parse(req.body.address);
+    }
 
-    // Handle amenities
     if (typeof req.body.amenities === 'string') {
-        updates.amenities = JSON.parse(req.body.amenities);
+        updates.amenities = req.body.amenities.split(',');
     }
 
     // Handle files
@@ -347,9 +358,9 @@ router.put('/:hotelId', verifyToken, (req, res, next) => {
 
 // Delete hotel
 router.delete('/:hotelId', verifyToken, errorMiddleware(async (req, res) => {
-    const hotel = await hotelModel.findOne({ 
+    const hotel = await hotelModel.findOne({
         _id: req.params.hotelId,
-        owner: req.user._id 
+        owner: req.user._id
     });
 
     if (!hotel) {

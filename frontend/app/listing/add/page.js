@@ -25,6 +25,7 @@ L.Marker.prototype.options.icon = DefaultIcon;
 export default function AddListing() {
     const router = useRouter();
     const user = getUser();
+    const today = new Date().toISOString().split('T')[0];
 
     const [formData, setFormData] = useState({
         type: '',
@@ -48,7 +49,7 @@ export default function AddListing() {
         location: {
             type: 'Point',
             coordinates: [0, 0]
-        }
+        },
     });
     const [mainImageFile, setMainImageFile] = useState(null);
     const [additionalImageFiles, setAdditionalImageFiles] = useState([]);
@@ -58,6 +59,8 @@ export default function AddListing() {
     const [showMap, setShowMap] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [amenities, setAmenities] = useState([]);
+    const [selectedAmenities, setSelectedAmenities] = useState([]);
 
     // Check authentication on mount
     useEffect(() => {
@@ -65,6 +68,24 @@ export default function AddListing() {
             router.push('/login');
         }
     }, []);
+    useEffect(() => {
+        // Fetch amenities from backend
+        axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/amenities`)
+            .then(response => {
+                setAmenities(response.data.data);
+            })
+            .catch(error => console.error('Error fetching amenities:', error));
+    }, []);
+    const toggleAmenity = (amenityId) => {
+        setSelectedAmenities(prev => {
+            const updatedAmenities = prev.includes(amenityId)
+                ? prev.filter(id => id !== amenityId)
+                : [...prev, amenityId];
+            console.log("Updated Amenities:", updatedAmenities);
+            return updatedAmenities;
+        });
+    };
+
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -154,7 +175,7 @@ export default function AddListing() {
 
         try {
             const formDataObj = new FormData();
-            
+
             // Append all form data fields directly
             Object.keys(formData).forEach(key => {
                 if (key === 'address' || key === 'location' || key === 'availability') {
@@ -163,15 +184,16 @@ export default function AddListing() {
                     formDataObj.append(key, formData[key]);
                 }
             });
-            
+
             // Append images
             if (mainImageFile) {
                 formDataObj.append('mainImage', mainImageFile);
             }
-            
+
             additionalImageFiles.forEach(file => {
                 formDataObj.append('additionalImages', file);
             });
+            formDataObj.append('amenities', selectedAmenities)
 
             const response = await axios.post(
                 `${process.env.NEXT_PUBLIC_BACKEND_URL}/listing`,
@@ -192,6 +214,25 @@ export default function AddListing() {
         }
     };
 
+    const months = [
+        { value: '01', label: 'January' },
+        { value: '02', label: 'February' },
+        { value: '03', label: 'March' },
+        { value: '04', label: 'April' },
+        { value: '05', label: 'May' },
+        { value: '06', label: 'June' },
+        { value: '07', label: 'July' },
+        { value: '08', label: 'August' },
+        { value: '09', label: 'September' },
+        { value: '10', label: 'October' },
+        { value: '11', label: 'November' },
+        { value: '12', label: 'December' }
+    ];
+    const years = [];
+    const currentYear = new Date().getFullYear();
+    for (let i = currentYear; i <= currentYear + 5; i++) {
+        years.push(i);
+    }
     return (
         <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
             <div className="max-w-5xl mx-auto">
@@ -206,14 +247,14 @@ export default function AddListing() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <label className="block text-sm font-medium text-gray-700">Listing Type</label>
-                                <select 
-                                    name="type" 
-                                    onChange={handleInputChange} 
-                                    required 
+                                <select
+                                    name="type"
+                                    onChange={handleInputChange}
+                                    required
                                     className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                 >
                                     <option value="">Select Type</option>
-                                    <option value="sale">For Sale</option>
+                                    <option value="sell">For sell</option>
                                     <option value="rent">For Rent</option>
                                     <option value="temporary_rent">Temporary Rent</option>
                                 </select>
@@ -221,17 +262,16 @@ export default function AddListing() {
 
                             <div className="space-y-2">
                                 <label className="block text-sm font-medium text-gray-700">Property Type</label>
-                                <select 
-                                    name="propertyType" 
-                                    onChange={handleInputChange} 
-                                    required 
+                                <select
+                                    name="propertyType"
+                                    onChange={handleInputChange}
+                                    required
                                     className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                 >
                                     <option value="">Select Property Type</option>
                                     <option value="house">House</option>
                                     <option value="apartment">Apartment</option>
                                     <option value="condo">Condo</option>
-                                    <option value="hotel">Hotel</option>
                                 </select>
                             </div>
                         </div>
@@ -243,48 +283,48 @@ export default function AddListing() {
                                 <h2 className="text-xl font-semibold text-gray-900">Location Details</h2>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <input 
-                                    type="text" 
-                                    name="address.street" 
-                                    placeholder="Street Address" 
-                                    onChange={handleInputChange} 
-                                    required 
+                                <input
+                                    type="text"
+                                    name="address.street"
+                                    placeholder="Street Address"
+                                    onChange={handleInputChange}
+                                    required
                                     className="p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                 />
-                                <input 
-                                    type="text" 
-                                    name="address.city" 
-                                    placeholder="City" 
-                                    onChange={handleInputChange} 
-                                    required 
+                                <input
+                                    type="text"
+                                    name="address.city"
+                                    placeholder="City"
+                                    onChange={handleInputChange}
+                                    required
                                     className="p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                 />
-                                <input 
-                                    type="text" 
-                                    name="address.state" 
-                                    placeholder="State" 
-                                    onChange={handleInputChange} 
-                                    required 
+                                <input
+                                    type="text"
+                                    name="address.state"
+                                    placeholder="State"
+                                    onChange={handleInputChange}
+                                    required
                                     className="p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                 />
-                                <input 
-                                    type="text" 
-                                    name="address.zip" 
-                                    placeholder="ZIP Code" 
-                                    onChange={handleInputChange} 
-                                    required 
+                                <input
+                                    type="text"
+                                    name="address.zip"
+                                    placeholder="ZIP Code"
+                                    onChange={handleInputChange}
+                                    required
                                     className="p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                 />
-                                <input 
-                                    type="text" 
-                                    name="address.country" 
-                                    placeholder="Country" 
-                                    onChange={handleInputChange} 
-                                    required 
+                                <input
+                                    type="text"
+                                    name="address.country"
+                                    placeholder="Country"
+                                    onChange={handleInputChange}
+                                    required
                                     className="p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                 />
-                                <button 
-                                    onClick={handleAddressSubmit} 
+                                <button
+                                    onClick={handleAddressSubmit}
                                     className="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
                                 >
                                     <FaMapMarkerAlt className="mr-2" />
@@ -310,11 +350,11 @@ export default function AddListing() {
                                     <label className="flex items-center text-sm font-medium text-gray-700">
                                         <FaBed className="mr-2" /> Bedrooms
                                     </label>
-                                    <input 
-                                        type="number" 
-                                        name="bedrooms" 
-                                        onChange={handleInputChange} 
-                                        required 
+                                    <input
+                                        type="number"
+                                        name="bedrooms"
+                                        onChange={handleInputChange}
+                                        required
                                         className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                     />
                                 </div>
@@ -322,11 +362,11 @@ export default function AddListing() {
                                     <label className="flex items-center text-sm font-medium text-gray-700">
                                         <FaBath className="mr-2" /> Bathrooms
                                     </label>
-                                    <input 
-                                        type="number" 
-                                        name="bathrooms" 
-                                        onChange={handleInputChange} 
-                                        required 
+                                    <input
+                                        type="number"
+                                        name="bathrooms"
+                                        onChange={handleInputChange}
+                                        required
                                         className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                     />
                                 </div>
@@ -334,11 +374,11 @@ export default function AddListing() {
                                     <label className="flex items-center text-sm font-medium text-gray-700">
                                         <FaRulerCombined className="mr-2" /> Area (sq ft)
                                     </label>
-                                    <input 
-                                        type="number" 
-                                        name="area" 
-                                        onChange={handleInputChange} 
-                                        required 
+                                    <input
+                                        type="number"
+                                        name="area"
+                                        onChange={handleInputChange}
+                                        required
                                         className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                     />
                                 </div>
@@ -348,13 +388,36 @@ export default function AddListing() {
                         {/* Description Section */}
                         <div className="space-y-2">
                             <label className="block text-sm font-medium text-gray-700">Description</label>
-                            <textarea 
-                                name="description" 
-                                onChange={handleInputChange} 
-                                required 
+                            <textarea
+                                name="description"
+                                onChange={handleInputChange}
+                                required
                                 rows="4"
                                 className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                             ></textarea>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm mb-2">Amenities</label>
+                            <div className="grid grid-cols-2 gap-y-4 gap-x-2">
+                                {amenities.map((amenity) => (
+                                    <div
+                                        key={amenity._id}
+                                        className={`flex flex-col items-center justify-center p-2 h-18 rounded-lg border ${selectedAmenities.includes(amenity.id)
+                                            ? 'border-blue-600 bg-blue-50'
+                                            : 'border-gray-300'
+                                            } cursor-pointer`}
+                                        onClick={() => toggleAmenity(amenity.id)}
+                                    >
+                                        <img
+                                            src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/${amenity.icon}`}
+                                            alt={amenity.name}
+                                            className="w-10 h-10"
+                                        />
+                                        <span className='text-xs'>{amenity.name}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
                         {/* Images Section */}
@@ -363,10 +426,10 @@ export default function AddListing() {
                                 <label className="flex items-center text-sm font-medium text-gray-700">
                                     <FaImages className="mr-2" /> Main Image
                                 </label>
-                                <input 
-                                    type="file" 
-                                    onChange={handleMainImageChange} 
-                                    accept="image/*" 
+                                <input
+                                    type="file"
+                                    onChange={handleMainImageChange}
+                                    accept="image/*"
                                     className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                 />
                                 {mainImagePreview && (
@@ -378,19 +441,19 @@ export default function AddListing() {
                                 <label className="flex items-center text-sm font-medium text-gray-700">
                                     <FaImages className="mr-2" /> Additional Images
                                 </label>
-                                <input 
-                                    type="file" 
-                                    multiple 
-                                    onChange={handleAdditionalImagesChange} 
-                                    accept="image/*" 
+                                <input
+                                    type="file"
+                                    multiple
+                                    onChange={handleAdditionalImagesChange}
+                                    accept="image/*"
                                     className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                 />
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
                                     {additionalImagePreviews.map((preview, index) => (
-                                        <img 
-                                            key={index} 
-                                            src={preview} 
-                                            alt={`Additional Image ${index + 1}`} 
+                                        <img
+                                            key={index}
+                                            src={preview}
+                                            alt={`Additional Image ${index + 1}`}
                                             className="w-full h-32 object-cover rounded-lg"
                                         />
                                     ))}
@@ -398,7 +461,7 @@ export default function AddListing() {
                             </div>
                         </div>
 
-                        {/* Price and Availability Section */}
+                        {/* In the Price & Availability Section of AddListing.js */}
                         <div className="bg-gray-50 p-6 rounded-lg">
                             <h2 className="text-xl font-semibold text-gray-900 mb-4">Price & Availability</h2>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -406,39 +469,89 @@ export default function AddListing() {
                                     <label className="flex items-center text-sm font-medium text-gray-700">
                                         <FaDollarSign className="mr-2" /> Price
                                     </label>
-                                    <input 
-                                        type="number" 
-                                        name="price" 
-                                        onChange={handleInputChange} 
-                                        required 
+                                    <input
+                                        type="number"
+                                        name="price"
+                                        onChange={handleInputChange}
+                                        required
                                         className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-medium text-gray-700">Available From</label>
-                                    <input 
-                                        type="date" 
-                                        name="availability.startDate" 
-                                        onChange={handleInputChange} 
-                                        required 
-                                        className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-medium text-gray-700">Available To</label>
-                                    <input 
-                                        type="date" 
-                                        name="availability.endDate" 
-                                        onChange={handleInputChange} 
-                                        required 
-                                        className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                    />
-                                </div>
+
+                                {formData.type !== 'sell' && (
+                                    <>
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                Available From
+                                            </label>
+                                            {formData.type === 'rent' ? (
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <select
+                                                        name="availability.startMonth"
+                                                        onChange={handleInputChange}
+                                                        className="w-full p-3 border border-gray-300 rounded-lg shadow-sm"
+                                                    >
+                                                        <option value="">Month</option>
+                                                        {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                                    </select>
+                                                    <select
+                                                        name="availability.startYear"
+                                                        onChange={handleInputChange}
+                                                        className="w-full p-3 border border-gray-300 rounded-lg shadow-sm"
+                                                    >
+                                                        <option value="">Year</option>
+                                                        {years.map(y => <option key={y} value={y}>{y}</option>)}
+                                                    </select>
+                                                </div>
+                                            ) : (
+                                                <input
+                                                    type="date"
+                                                    name="availability.startDate"
+                                                    onChange={handleInputChange}
+                                                    min={today}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm"
+                                                />
+                                            )}
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-medium text-gray-700">
+                                                Available To
+                                            </label>
+                                            {formData.type === 'rent' ? (
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <select
+                                                        name="availability.endMonth"
+                                                        onChange={handleInputChange}
+                                                        className="w-full p-3 border border-gray-300 rounded-lg shadow-sm"
+                                                    >
+                                                        <option value="">Month</option>
+                                                        {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                                    </select>
+                                                    <select
+                                                        name="availability.endYear"
+                                                        onChange={handleInputChange}
+                                                        className="w-full p-3 border border-gray-300 rounded-lg shadow-sm"
+                                                    >
+                                                        <option value="">Year</option>
+                                                        {years.map(y => <option key={y} value={y}>{y}</option>)}
+                                                    </select>
+                                                </div>
+                                            ) : (
+                                                <input
+                                                    type="date"
+                                                    name="availability.endDate"
+                                                    onChange={handleInputChange}
+                                                    min={today}
+                                                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm"
+                                                />
+                                            )}
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
-
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             disabled={loading}
                             className={`w-full bg-blue-600 text-white p-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors
                                 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}

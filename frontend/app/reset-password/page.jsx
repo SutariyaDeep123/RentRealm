@@ -23,7 +23,7 @@ export default function ResetPassword() {
         }
 
         try {
-            await axios.post(process.env.NEXT_PUBLIC_BACKEND_URL + "/reset-password", {
+            await axios.post(process.env.NEXT_PUBLIC_BACKEND_URL + "/auth/reset-password", {
                 token,
                 newPassword: password
             });
@@ -32,7 +32,7 @@ export default function ResetPassword() {
             window.location.href = '/login';
         } catch (error) {
             console.log(error)
-            toast.error(error.response.data.error.message);
+            toast.error(error.response.data.error.message||"Failed to reset password. Please try again.");
             console.error("Error resetting password:", error);
         }
     };

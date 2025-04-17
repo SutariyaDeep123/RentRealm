@@ -44,7 +44,7 @@ passport.deserializeUser(async (id, done) => {
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/auth/google/callback'
+    callbackURL: process.env.FRONTEND_URL || 'http://localhost:5000/auth/google/callback'
 },
     async (accessToken, refreshToken, profile, done) => {
         try {
@@ -55,13 +55,13 @@ passport.use(new GoogleStrategy({
                 // Update existing user's Google info
                 user.googleId = profile.id;
                 user.email = profile.emails[0].value;
-                user.name = profile.displayName;
+                user.firstName = profile.displayName;
                 await user.save();
             } else {
                 // Create new user
                 user = new User({
                     googleId: profile.id,
-                    name: profile.displayName,
+                    firstName: profile.displayName,
                     email: profile.emails[0].value,
                     role: 'user'
                 });
@@ -176,7 +176,7 @@ router.get('/google/callback',
         return res.json({
             user: {
                 id: req.user.user._id,
-                name: req.user.user.name,
+                name: req.user.user.firstName,
                 email: req.user.user.email,
                 role: req.user.user.role
             },

@@ -7,6 +7,10 @@ const Hotel = require('../models/hotelModel');
 const Room = require('../models/roomModel');
 const Listing = require('../models/listingModel');
 const verifyToken = require('../middleware/authMiddleware');
+const { sendEmail } = require('../utils/sendMail');
+const { invoiceEmail } = require('../static/mail');
+const userModel = require('../models/userModel');
+const { generateInvoicePDF } = require('../utils/pdfService');
 
 // Book a hotel room
 router.post('/hotel', verifyToken, errorMiddleware(async (req, res) => {
@@ -72,17 +76,39 @@ router.post('/hotel', verifyToken, errorMiddleware(async (req, res) => {
 
     await booking.save();
 
+    console.log("sending email")
+    const user = await userModel.findById(req.user._id); // add if not already fetched
+    await sendEmail(user.email, "Your invoice", invoiceEmail(user, booking, 'hotel'));
+    const populatedBooking = await booking.populate([
+        { path: 'hotel', select: 'name address' },
+        { path: 'room', select: 'type price' },
+        { path: 'user', select: 'name email' }
+    ]);
+
+    const emailHtml = invoiceEmail(user, populatedBooking, 'hotel');
+    const pdfBuffer = await generateInvoicePDF(user, populatedBooking, 'hotel');
+
+    console.log(user,"=====================user")
+    // Send email with HTML and PDF attachment
+    await sendEmail(
+        user.email,
+        "Your Booking Invoice",
+        emailHtml,
+        [{
+            filename: `invoice-${populatedBooking._id.toString().substring(0, 8)}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf'
+        }]
+    );
+
+
+
     return {
         message: 'Booking confirmed successfully',
-        booking: await booking.populate([
-            { path: 'hotel', select: 'name address' },
-            { path: 'room', select: 'type price' },
-            { path: 'user', select: 'name email' }
-        ])
+        booking: populatedBooking
     }
 }));
-
-// Book a listing
+// In your booking route
 router.post('/listing', verifyToken, errorMiddleware(async (req, res) => {
     const {
         listingId,
@@ -92,18 +118,52 @@ router.post('/listing', verifyToken, errorMiddleware(async (req, res) => {
         specialRequests
     } = req.body;
 
-    // Validate dates
+    // Check if listing exists
+    const listing = await Listing.findById(listingId);
+    if (!listing) {
+        throw new ApiError(404, 'Listing not found');
+    }
+
+    // Handle sell listings differently
+    if (listing.type === 'sell') {
+        // Check if listing is already sold
+        if (!listing.isAvailable) {
+            throw new ApiError(400, 'This property has already been sold');
+        }
+
+        const booking = new Booking({
+            user: req.user._id,
+            bookingType: 'listing',
+            listing: listingId,
+            checkIn: new Date(),
+            checkOut: new Date(),
+            totalPrice: listing.price,
+            guestCount: 1,
+            specialRequests,
+            status: 'confirmed'
+        });
+
+        await booking.save();
+
+        // Mark listing as sold
+        listing.isAvailable = false;
+        await listing.save();
+
+        return {
+            message: 'Purchase confirmed successfully',
+            booking: await booking.populate([
+                { path: 'listing', select: 'name address price' },
+                { path: 'user', select: 'name email' }
+            ])
+        }
+    }
+
+    // For rent and temporary_rent listings
     const checkInDate = new Date(checkIn);
     const checkOutDate = new Date(checkOut);
 
     if (checkInDate >= checkOutDate) {
         throw new ApiError(400, 'Check-out date must be after check-in date');
-    }
-
-    // Check if listing exists
-    const listing = await Listing.findById(listingId);
-    if (!listing) {
-        throw new ApiError(404, 'Listing not found');
     }
 
     // Check for existing bookings in the date range
@@ -122,9 +182,24 @@ router.post('/listing', verifyToken, errorMiddleware(async (req, res) => {
         throw new ApiError(400, 'Listing is not available for the selected dates');
     }
 
-    // Calculate total price (number of nights * listing price)
-    const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
-    const totalPrice = nights * listing.price;
+    let totalPrice = 0;
+
+    if (listing.type === 'rent') {
+        const monthDiff = (checkOutDate.getFullYear() - checkInDate.getFullYear()) * 12 +
+            (checkOutDate.getMonth() - checkInDate.getMonth());
+        if (monthDiff <= 0) {
+            throw new ApiError(400, 'Check-out month must be after check-in month');
+        }
+        totalPrice = monthDiff * listing.price;
+
+    } else if (listing.type === 'temporary_rent') {
+        const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
+        totalPrice = nights * listing.price;
+
+    } else {
+        throw new ApiError(400, 'Unsupported listing type');
+    }
+
 
     const booking = new Booking({
         user: req.user._id,
@@ -140,6 +215,10 @@ router.post('/listing', verifyToken, errorMiddleware(async (req, res) => {
 
     await booking.save();
 
+    console.log("=====================sending email")
+    const user = await userModel.findById(req.user._id); // add if not already fetched
+    await sendEmail(user.email, "Your invoice", invoiceEmail(user, booking, 'listing'));
+
     return {
         message: 'Booking confirmed successfully',
         booking: await booking.populate([
@@ -148,7 +227,6 @@ router.post('/listing', verifyToken, errorMiddleware(async (req, res) => {
         ])
     }
 }));
-
 // Get user's bookings (both hotels and listings)
 router.get('/my-bookings', verifyToken, errorMiddleware(async (req, res) => {
     const bookings = await Booking.find({ user: req.user._id })
@@ -158,7 +236,7 @@ router.get('/my-bookings', verifyToken, errorMiddleware(async (req, res) => {
         .populate('listing', 'name address price')
         .sort('-createdAt');
 
-    return  bookings;
+    return bookings;
 }));
 
 // Get owner's property bookings
@@ -178,11 +256,11 @@ router.get('/property-bookings', verifyToken, errorMiddleware(async (req, res) =
             { listing: { $in: listingIds } }
         ]
     })
-    .populate('user', 'name email')
-    .populate('hotel', 'name address')
-    .populate('room', 'type price')
-    .populate('listing', 'name address price')
-    .sort('-createdAt');
+        .populate('user', 'name email')
+        .populate('hotel', 'name address')
+        .populate('room', 'type price')
+        .populate('listing', 'name address price')
+        .sort('-createdAt');
 
     return bookings;
 }));
@@ -213,7 +291,7 @@ router.patch('/:bookingId/status', verifyToken, errorMiddleware(async (req, res)
     booking.status = status;
     await booking.save();
 
-    return  {
+    return {
         message: 'Booking status updated successfully',
         booking: await booking.populate([
             { path: 'user', select: 'name email' },
@@ -221,6 +299,85 @@ router.patch('/:bookingId/status', verifyToken, errorMiddleware(async (req, res)
             { path: 'room', select: 'type price' },
             { path: 'listing', select: 'name address price' }
         ])
+    }
+}));
+
+
+
+// Update in booking.js
+router.get('/check-availability', verifyToken, errorMiddleware(async (req, res) => {
+    const {
+        type,
+        propertyId,
+        roomId,
+        checkIn,
+        checkOut
+    } = req.query;
+
+    // Validate that both dates are provided
+    if (!checkIn || !checkOut) {
+        return new ApiError(400, 'Please provide both check-in and check-out dates');
+    }
+
+    // Validate dates
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+
+    if (checkInDate >= checkOutDate) {
+        return new ApiError(400, 'Check-out date must be after check-in date');
+
+    }
+
+    if (type === 'hotel') {
+        // Check if room exists
+        const room = await Room.findById(roomId);
+        if (!room) {
+            return new ApiError(404, 'Room not found');
+        }
+
+        // Check for existing bookings in the date range
+        const existingBooking = await Booking.findOne({
+            room: roomId,
+            status: { $ne: 'cancelled' },
+            $or: [
+                {
+                    checkIn: { $lte: checkOutDate },
+                    checkOut: { $gte: checkInDate }
+                }
+            ]
+        });
+
+        return {
+            available: !existingBooking,
+            message: existingBooking
+                ? 'Room is not available for the selected dates'
+                : 'Room is available'
+        };
+    } else {
+        // For listings
+        const listing = await Listing.findById(propertyId);
+        if (!listing) {
+            return new ApiError(404, 'Listing not found');
+        }
+
+        // Check for existing bookings in the date range
+        const existingBooking = await Booking.findOne({
+            listing: propertyId,
+            status: { $ne: 'cancelled' },
+            $or: [
+                {
+                    checkIn: { $lte: checkOutDate },
+                    checkOut: { $gte: checkInDate }
+                }
+            ]
+        });
+
+        return {
+            available: !existingBooking,
+            message: existingBooking
+                ? 'Property is not available for the selected dates'
+                : 'Property is available'
+        };
     }
 }));
 

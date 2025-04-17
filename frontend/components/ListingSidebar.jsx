@@ -3,17 +3,33 @@ import DualSlider from "./ui/DualSlider";
 import axios from "axios";
 
 export default function ListingSidebar({ open, onFiltersChange }) {
-    const [rangeValues, setRangeValues] = useState([0, 5000]);
     const [selectedAmenities, setSelectedAmenities] = useState([]);
     const [amenities, setAmenities] = useState([]);
+    const [rangeValues, setRangeValues] = useState([0, 0]);
+    const [minMax, setMinMax] = useState([0, 0]);
+
 
     useEffect(() => {
-        // Fetch amenities from backend
-        axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/amenities`)
-            .then(response => {
-                setAmenities(response.data.data);
-            })
-            .catch(error => console.error('Error fetching amenities:', error));
+        // Fetch both amenities and dynamic price range
+        const fetchData = async () => {
+            try {
+                const [amenitiesRes, priceRangeRes] = await Promise.all([
+                    axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/amenities`),
+                    axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/listing/price-range`)
+                ]);
+
+                setAmenities(amenitiesRes.data.data);
+
+                const { minPrice, maxPrice } = priceRangeRes.data.data;
+                setMinMax([minPrice, maxPrice]);
+                setRangeValues([minPrice, maxPrice]);
+
+            } catch (error) {
+                console.error("Error fetching filter data:", error);
+            }
+        };
+
+        fetchData();
     }, []);
 
     useEffect(() => {
@@ -37,16 +53,21 @@ export default function ListingSidebar({ open, onFiltersChange }) {
             <div>
                 <p className="text-text-primary text-lg">Listing Filters</p>
                 <p>Price Range</p>
+
                 <DualSlider
                     className="my-8"
+                    value={rangeValues}
                     defaultValue={rangeValues}
-                    max={5000}
-                    min={0}
+                    min={minMax[0]}
+                    max={minMax[1]}
                     step={1}
                     onValueChange={setRangeValues}
                 />
+
+
+
             </div>
-            
+
 
             <div>
                 <label className="block text-sm mb-2">Amenities</label>
@@ -54,15 +75,14 @@ export default function ListingSidebar({ open, onFiltersChange }) {
                     {amenities.map((amenity) => (
                         <div
                             key={amenity.id}
-                            className={`flex flex-col items-center justify-center p-2 h-18 rounded-lg border ${
-                                selectedAmenities.includes(amenity.id)
-                                    ? 'border-blue-600 bg-blue-50'
-                                    : 'border-gray-300'
-                            } cursor-pointer`}
+                            className={`flex flex-col items-center justify-center p-2 h-18 rounded-lg border ${selectedAmenities.includes(amenity.id)
+                                ? 'border-blue-600 bg-blue-50'
+                                : 'border-gray-300'
+                                } cursor-pointer`}
                             onClick={() => toggleAmenity(amenity.id)}
                         >
-                            <img 
-                                src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/${amenity.icon}`} 
+                            <img
+                                src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/${amenity.icon}`}
                                 alt={amenity.name}
                                 className="w-10 h-10"
                             />

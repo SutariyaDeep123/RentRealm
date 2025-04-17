@@ -81,13 +81,13 @@ export default function MyBookings() {
             ) : (
                 <div className="space-y-6">
                     {bookings.map((booking) => (
-                        <div key={booking._id} className="bg-white rounded-lg shadow p-6">
+                        <div key={booking._id} className="bg-white rounded-lg border border-gray-400 shadow p-6">
                             <div className="flex flex-col md:flex-row justify-between">
                                 <div className="flex-1">
                                     <h2 className="text-xl font-semibold">
                                         {booking.bookingType === 'hotel' 
                                             ? booking.hotel?.name 
-                                            : booking.listing?.name}
+                                            : booking.listing?.address.street +", " +booking.listing?.address.city }
                                     </h2>
                                     
                                     <div className="mt-2 space-y-2">

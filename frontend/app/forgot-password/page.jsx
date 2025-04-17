@@ -10,7 +10,7 @@ export default function ForgotPassword() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post(process.env.NEXT_PUBLIC_BACKEND_URL + "/forgot-password", { email });
+            await axios.post(process.env.NEXT_PUBLIC_BACKEND_URL + "/auth/forgot-password", { email });
             toast.success("Password reset email sent successfully");
             setEmail('');
         } catch (error) {

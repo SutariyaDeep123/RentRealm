@@ -24,6 +24,7 @@ export default function RoomDetailPage() {
                 ]);
 
                 setRoom(roomResponse.data.data);
+                console.log("==================", roomResponse.data.data)
                 setHotel(hotelResponse.data.data);
             } catch (err) {
                 setError(err.message);
@@ -48,7 +49,7 @@ export default function RoomDetailPage() {
                     <div className="flex items-center gap-4 text-gray-600">
                         <div className="flex items-center">
                             <MapPin className="w-5 h-5 mr-1" />
-                            <span>{`${hotel.address.city}, ${hotel.address.country}`}</span>
+                            <span>{`${hotel?.address?.city}, ${hotel?.address?.country}`}</span>
                         </div>
                         <div className="flex items-center">
                             <Users className="w-5 h-5 mr-1" />
@@ -85,8 +86,8 @@ export default function RoomDetailPage() {
                             <div className="grid grid-cols-2 gap-4">
                                 {room.amenities?.map((amenity) => (
                                     <div key={amenity._id} className="flex items-center gap-2">
-                                        <img 
-                                            src={`${process.env.NEXT_PUBLIC_BACKEND_URL}${amenity.icon}`}
+                                        <img
+                                            src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/amenities/${amenity.icon}`}
                                             alt={amenity.name}
                                             className="w-6 h-6"
                                         />
@@ -100,12 +101,17 @@ export default function RoomDetailPage() {
                     {/* Booking Sidebar */}
                     <div className="col-span-1">
                         <div className="sticky top-24 bg-white rounded-lg shadow-lg p-6">
-                            <BookingForm 
+                            <BookingForm
                                 type="hotel"
                                 propertyId={params.hotelId}
                                 roomId={params.roomId}
                                 price={room.price}
+                                fullData={{
+                                    room,
+                                    hotel
+                                }}
                             />
+
                         </div>
                     </div>
                 </div>

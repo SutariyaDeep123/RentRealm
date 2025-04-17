@@ -3,37 +3,44 @@ import DualSlider from "./ui/DualSlider";
 import axios from "axios";
 
 export default function HotelSidebar({ open, onFiltersChange }) {
-    const [priceRange, setPriceRange] = useState([0, 5000]);
     const [selectedAmenities, setSelectedAmenities] = useState([]);
     const [amenities, setAmenities] = useState([]);
     const [selectedRoomTypes, setSelectedRoomTypes] = useState([]);
 
     useEffect(() => {
-        // Fetch amenities from backend
-        axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/amenities`)
-            .then(response => {
-                setAmenities(response.data.data);
-            })
-            .catch(error => console.error('Error fetching amenities:', error));
-    }, []);
+        // Fetch both amenities and dynamic price range
+        const fetchData = async () => {
+            try {
+                const [amenitiesRes] = await Promise.all([
+                    axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/amenities`),
+                ]);
 
+                setAmenities(amenitiesRes.data.data);
+
+
+            } catch (error) {
+                console.error("Error fetching filter data:", error);
+            }
+        };
+
+        fetchData();
+    }, []);
     useEffect(() => {
         // Update parent component with filter values
         onFiltersChange({
-            priceRange,
             amenities: selectedAmenities,
             roomTypes: selectedRoomTypes
         });
-    }, [priceRange, selectedAmenities, selectedRoomTypes]);
-
+    }, [ selectedAmenities, selectedRoomTypes]);
     const toggleAmenity = (amenityId) => {
-        setSelectedAmenities(prev =>
-            prev.includes(amenityId)
+        setSelectedAmenities(prev => {
+            const updatedAmenities = prev.includes(amenityId)
                 ? prev.filter(id => id !== amenityId)
-                : [...prev, amenityId]
-        );
+                : [...prev, amenityId];
+            console.log("Updated Amenities:", updatedAmenities);
+            return updatedAmenities;
+        });
     };
-
     const toggleRoomType = (type) => {
         setSelectedRoomTypes(prev =>
             prev.includes(type)
@@ -46,15 +53,7 @@ export default function HotelSidebar({ open, onFiltersChange }) {
         <div className={`fixed h-full lg:w-72 w-[50vw] shadow-xl shadow-gray-500 px-5 pb-16 overflow-scroll transition-transform duration-300 ease-in-out ${open ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
             <div>
                 <p className="text-text-primary text-lg">Hotel Filters</p>
-                <p>Room Price Range</p>
-                <DualSlider
-                    className="my-8"
-                    defaultValue={priceRange}
-                    max={5000}
-                    min={0}
-                    step={10}
-                    onValueChange={setPriceRange}
-                />
+             
             </div>
 
             <div className="mb-6">
@@ -83,11 +82,11 @@ export default function HotelSidebar({ open, onFiltersChange }) {
                         <div
                             key={amenity._id}
                             className={`flex flex-col items-center justify-center p-2 h-18 rounded-lg border ${
-                                selectedAmenities.includes(amenity._id)
+                                selectedAmenities.includes(amenity.id)
                                     ? 'border-blue-600 bg-blue-50'
                                     : 'border-gray-300'
                             } cursor-pointer`}
-                            onClick={() => toggleAmenity(amenity._id)}
+                            onClick={() => toggleAmenity(amenity.id)}
                         >
                             <img 
                                 src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/${amenity.icon}`} 

@@ -9,6 +9,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const verifyToken = require('../middleware/authMiddleware');
+const bookingModel = require('../models/bookingModel');
 
 // Configure multer for file upload
 const storage = multer.diskStorage({
@@ -26,15 +27,37 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage: storage });
-router.get('/my-listings', verifyToken, async (req, res) => {
-    try {
-        const listings = await listingModel.find({ owner: req.user._id });
-        res.json({ listings });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
+router.get('/my-listings', verifyToken, errorMiddleware(async (req, res) => {
+
+    const listings = await listingModel.find({ owner: req.user._id });
+    return { listings };
+
+}));
 // Get all listings with filters
+
+
+// GET /listing/price-range
+router.get('/price-range', errorMiddleware(async (req, res) => {
+    const prices = await listingModel.aggregate([
+        { $match: { isAvailable: true } },
+        {
+            $group: {
+                _id: null,
+                minPrice: { $min: "$price" },
+                maxPrice: { $max: "$price" }
+            }
+        }
+    ]);
+
+    const { minPrice = 0, maxPrice = 5000 } = prices[0] || {};
+
+    return {
+        minPrice,
+        maxPrice
+    }
+
+}));
+
 router.get('/', errorMiddleware(async (req, res) => {
     const {
         page = 1,
@@ -60,11 +83,12 @@ router.get('/', errorMiddleware(async (req, res) => {
     }
 
     if (amenities) {
-        query.amenities = { 
-            $all: Array.isArray(amenities) ? amenities : [amenities] 
+        query.amenities = {
+            $all: Array.isArray(amenities) ? amenities : [amenities]
         };
     }
 
+    query.isAvailable = true;
     // First find listings that match basic criteria
     let listings = await listingModel.find(query)
         .populate('amenities', 'name icon')
@@ -76,7 +100,7 @@ router.get('/', errorMiddleware(async (req, res) => {
     // Transform the response to include full image URLs
     const transformedListings = listings.map(listing => {
         const listingObj = listing.toObject();
-        
+
         // Transform main image URL
         if (listingObj.mainImage) {
             listingObj.mainImage = `/${listingObj.mainImage}`;
@@ -99,7 +123,8 @@ router.get('/', errorMiddleware(async (req, res) => {
     });
 
     const total = await listingModel.countDocuments(query);
-
+    console.log(total)
+    console.log(listings)
     return {
         listings: transformedListings,
         pagination: {
@@ -115,7 +140,7 @@ router.post('/', verifyToken, (req, res, next) => {
     upload.fields([
         { name: 'mainImage', maxCount: 1 },
         { name: 'additionalImages', maxCount: 5 }
-    ])(req, res, function(err) {
+    ])(req, res, function (err) {
         if (err instanceof multer.MulterError) {
             return next(new ApiError(400, `Upload error: ${err.message}`));
         } else if (err) {
@@ -131,10 +156,18 @@ router.post('/', verifyToken, (req, res, next) => {
         listingData.location = JSON.parse(req.body.location);
     }
 
-    // Handle amenities
     if (typeof req.body.amenities === 'string') {
-        listingData.amenities = JSON.parse(req.body.amenities);
+        listingData.amenities = req.body.amenities.split(',');
     }
+
+    if (typeof req.body.address === 'string') {
+        listingData.address = JSON.parse(req.body.address);
+    }
+
+    if (typeof req.body.availability === 'string') {
+        listingData.availability = JSON.parse(req.body.availability);
+    }
+
 
     // Handle files
     if (req.files) {
@@ -186,9 +219,9 @@ router.post('/', verifyToken, (req, res, next) => {
 // Get listing by ID
 router.get('/:listingId', errorMiddleware(async (req, res) => {
     const listing = await listingModel.findById(req.params.listingId)
-        .populate('amenities', 'name icon')
-        .populate('owner', 'name email');
-    
+        .populate('amenities')
+        .populate('owner');
+
     if (!listing) {
         throw new ApiError(404, 'Listing not found');
     }
@@ -201,7 +234,7 @@ router.get('/:listingId', errorMiddleware(async (req, res) => {
     if (response.images && response.images.length > 0) {
         response.images = response.images.map(img => `/${img}`);
     }
-    
+
     return response;
 }));
 
@@ -210,7 +243,7 @@ router.put('/:listingId', verifyToken, (req, res, next) => {
     upload.fields([
         { name: 'mainImage', maxCount: 1 },
         { name: 'additionalImages', maxCount: 5 }
-    ])(req, res, function(err) {
+    ])(req, res, function (err) {
         if (err instanceof multer.MulterError) {
             return next(new ApiError(400, `Upload error: ${err.message}`));
         } else if (err) {
@@ -219,9 +252,9 @@ router.put('/:listingId', verifyToken, (req, res, next) => {
         next();
     });
 }, errorMiddleware(async (req, res) => {
-    const listing = await listingModel.findOne({ 
+    const listing = await listingModel.findOne({
         _id: req.params.listingId,
-        owner: req.user._id 
+        owner: req.user._id
     });
 
     if (!listing) {
@@ -235,10 +268,18 @@ router.put('/:listingId', verifyToken, (req, res, next) => {
         updates.location = JSON.parse(req.body.location);
     }
 
-    // Handle amenities
+    if (typeof req.body.address === 'string') {
+        updates.address = JSON.parse(req.body.address);
+    }
+
     if (typeof req.body.amenities === 'string') {
         updates.amenities = JSON.parse(req.body.amenities);
     }
+
+    if (typeof req.body.availability === 'string') {
+        updates.availability = JSON.parse(req.body.availability);
+    }
+
 
     // Handle files
     if (req.files) {
@@ -281,9 +322,9 @@ router.put('/:listingId', verifyToken, (req, res, next) => {
 
 // Delete listing
 router.delete('/:listingId', verifyToken, errorMiddleware(async (req, res) => {
-    const listing = await listingModel.findOne({ 
+    const listing = await listingModel.findOne({
         _id: req.params.listingId,
-        owner: req.user._id 
+        owner: req.user._id
     });
 
     if (!listing) {
@@ -305,5 +346,15 @@ router.delete('/:listingId', verifyToken, errorMiddleware(async (req, res) => {
 
     return { message: 'Listing deleted successfully' };
 }));
+
+router.get('/my/bookings', verifyToken, errorMiddleware(async (req, res) => {
+    const bookings = await bookingModel.find({ user: req.user._id })
+        .populate('user', 'name email')
+        .populate('listing');
+
+    return bookings;
+}));
+
+
 
 module.exports = router;

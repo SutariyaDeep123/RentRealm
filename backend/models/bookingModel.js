@@ -34,6 +34,12 @@ const bookingSchema = new mongoose.Schema({
     },
     guestCount: { type: Number, required: true },
     specialRequests: String,
+    paymentType: {
+        type: String,
+        enum: ['recurring', 'one_time'],
+        required: true,
+        default: 'one_time'
+      },
     createdAt: { type: Date, default: Date.now }
   });
   

@@ -348,8 +348,7 @@ router.get('/', errorMiddleware(async (req, res) => {
 // Get room by ID
 router.get('/:roomId', errorMiddleware(async (req, res) => {
     const room = await Room.findById(req.params.roomId)
-        .populate('hotel', 'name address mainImage')
-        .populate('amenities', 'name icon');
+        .populate('hotel', 'name address mainImage').populate('amenities')
     
     if (!room) {
         throw new ApiError(404, 'Room not found');
@@ -368,13 +367,6 @@ router.get('/:roomId', errorMiddleware(async (req, res) => {
         roomObj.hotel.mainImage = `/hotels/${roomObj.hotel.mainImage}`;
     }
 
-    // Transform amenity icons if exists
-    if (roomObj.amenities) {
-        roomObj.amenities = roomObj.amenities.map(amenity => ({
-            ...amenity,
-            icon: amenity.icon ? `/amenities/${amenity.icon}` : null
-        }));
-    }
     
     return roomObj;
 }));
