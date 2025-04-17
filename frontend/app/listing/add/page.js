@@ -5,7 +5,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { isAuthenticated, getUser } from '@/utils/auth';
+import { isAuthenticated } from '@/utils/auth';
 import { useRouter } from 'next/navigation';
 import { FaBed, FaBath, FaRulerCombined, FaDollarSign, FaMapMarkerAlt, FaImages, FaHome } from 'react-icons/fa';
 
@@ -24,7 +24,6 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 export default function AddListing() {
     const router = useRouter();
-    const user = getUser();
     const today = new Date().toISOString().split('T')[0];
 
     const [formData, setFormData] = useState({

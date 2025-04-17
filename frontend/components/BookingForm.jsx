@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Users, DollarSign } from 'lucide-react';
 import axios from 'axios';
-import { getUser, isAuthenticated } from '@/utils/auth';
+import {  isAuthenticated } from '@/utils/auth';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
 import { loadStripe } from '@stripe/stripe-js';
