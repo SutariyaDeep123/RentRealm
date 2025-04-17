@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
-export default function SuccessPage() {
+function SuccessPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const hasFetched = useRef(false); // Track if the API call has been made
@@ -83,6 +83,15 @@ export default function SuccessPage() {
                     </p>
                 </div>
             </div>
+        </Suspense>
+    );
+}
+
+
+export default function SuccessPaymentPage() {
+    return (
+        <Suspense fallback="Loading...">
+            <SuccessPage/>
         </Suspense>
     );
 }

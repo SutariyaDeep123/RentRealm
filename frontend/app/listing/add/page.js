@@ -5,7 +5,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { isAuthenticated } from '@/utils/auth';
+import { isAuthenticated, getUser } from '@/utils/auth';
 import { useRouter } from 'next/navigation';
 import { FaBed, FaBath, FaRulerCombined, FaDollarSign, FaMapMarkerAlt, FaImages, FaHome } from 'react-icons/fa';
 
@@ -24,6 +24,7 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 export default function AddListing() {
     const router = useRouter();
+    const user = getUser();
     const today = new Date().toISOString().split('T')[0];
 
     const [formData, setFormData] = useState({
@@ -253,7 +254,7 @@ export default function AddListing() {
                                     className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                 >
                                     <option value="">Select Type</option>
-                                    <option value="sell">For sell</option>
+                                    <option value="sale">For Sale</option>
                                     <option value="rent">For Rent</option>
                                     <option value="temporary_rent">Temporary Rent</option>
                                 </select>
@@ -477,7 +478,7 @@ export default function AddListing() {
                                     />
                                 </div>
 
-                                {formData.type !== 'sell' && (
+                                {formData.type !== 'sale' && (
                                     <>
                                         <div className="space-y-2">
                                             <label className="block text-sm font-medium text-gray-700">

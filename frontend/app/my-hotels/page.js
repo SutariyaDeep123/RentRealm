@@ -134,7 +134,7 @@ export default function MyHotels() {
                                     <div className="relative h-48">
                                         <img
                                             src={`${BASE_URL}/hotels/${hotel.mainImage}`}
-                                            alt={hotel.name}
+                                            alt={hotel.mainImage}
                                             className="w-full h-full object-cover"
                                             onError={(e) => {
                                                 e.target.src = '/placeholder-hotel.jpg';
@@ -188,14 +188,13 @@ export default function MyHotels() {
                                                     <>
                                                         <div className='flex items-center'>
                                                             <img
-                                                                key={index}
+                                                                key={room._id}
                                                                 src={`${BASE_URL}/rooms/${room.images[0]}`}
-                                                                alt={`View ${index + 1}`}
+                                                                alt={`View ${room._id}`}
                                                                 className="h-16 w-16 object-cover rounded"
 
                                                             />
                                                             <span
-                                                                key={index}
                                                                 className="px-2 py-1 rounded-full  text-gray-600"
                                                             >
                                                                 {room?.type} - ${room?.price}
@@ -232,9 +231,9 @@ export default function MyHotels() {
                                                 <div className="flex gap-2 overflow-x-auto">
                                                     {hotel.images.map((image, index) => (
                                                         <img
-                                                            key={index}
+                                                            key={image}
                                                             src={`${BASE_URL}/hotels/${image}`}
-                                                            alt={`View ${index + 1}`}
+                                                            alt={`View ${image}`}
                                                             className="h-16 w-16 object-cover rounded"
                                                             onError={(e) => {
                                                                 e.target.src = '/placeholder-hotel.jpg';

@@ -28,26 +28,26 @@ export default function EditRoom({ params }) {
     { value: 'suite', label: 'Suite' },
   ];
 
-  // Fetch room details and amenities
   useEffect(() => {
     const fetchRoomDetails = async () => {
       try {
         const roomResponse = await axios.get(`${BASE_URL}/rooms/${roomId}`);
         if (!roomResponse.data) throw new Error('Failed to fetch room details');
         const roomData = roomResponse.data.data;
+        console.log(roomData, "roomData")
         setFormData({
           type: roomData.type,
           price: roomData.price,
           description: roomData.description,
           images: roomData.images || [],
         });
-        setSelectedAmenities(roomData.amenities || []);
+        setSelectedAmenities(roomData.amenities.map(a=>a._id) || []); // Initialize selected amenities
       } catch (error) {
         toast.error('Error fetching room details');
         console.error(error);
       }
     };
-
+  
     const fetchAmenities = async () => {
       try {
         const amenitiesResponse = await axios.get(`${BASE_URL}/amenities`);
@@ -57,10 +57,11 @@ export default function EditRoom({ params }) {
         console.error(error);
       }
     };
-
+  
     fetchRoomDetails();
     fetchAmenities();
   }, [roomId]);
+  
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -107,13 +108,16 @@ export default function EditRoom({ params }) {
   // Handle amenity selection toggle
   const toggleAmenity = (amenityId) => {
     setSelectedAmenities(prev => {
+      // Create a new array based on the previous selected amenities
       const updatedAmenities = prev.includes(amenityId)
-        ? prev.filter(id => id !== amenityId)
-        : [...prev, amenityId];
-      console.log("Updated Amenities:", updatedAmenities);
-      return updatedAmenities;
+        ? prev.filter(id => id !== amenityId)  // If it’s already selected, remove it
+        : [...prev, amenityId];  // If it’s not selected, add it
+  
+      console.log("Updated Amenities:", updatedAmenities); // You can check this in the console
+      return updatedAmenities;  // Return the new state array
     });
   };
+  
   // Handle image upload
   const handleImageUpload = (e) => {
     setNewImages([...newImages, ...e.target.files]);
