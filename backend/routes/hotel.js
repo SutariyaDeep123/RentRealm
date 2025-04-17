@@ -213,75 +213,83 @@ const consoleHotel = (req, res, next) => {
     next();
 }
 
-
-// GET /hotels - Paginated hotel list with filters
-router.get('/', errorMiddleware(async (req, res) => {
-    const {
-        page = 1,
-        limit = 10,
-        sort = '-createdAt',
-        city,
-        amenities,
-        owner
-    } = req.query;
-
-    const query = {};
-
-    if (city) {
-        query['address.city'] = new RegExp(city, 'i');
+// Add new hotel
+router.post('/', verifyToken, (req, res, next) => {
+    upload(req, res, function (err) {
+        if (err instanceof multer.MulterError) {
+            return next(new ApiError(400, `Upload error: ${err.message}`));
+        } else if (err) {
+            return next(err);
+        }
+        next();
+    });
+}, errorMiddleware(async (req, res) => {
+    const hotelData = { ...req.body };
+    console.log("before parse", hotelData)
+    // Handle location data
+    if (typeof req.body.location === 'string') {
+        hotelData.location = JSON.parse(req.body.location);
     }
 
-    if (amenities) {
-        query.amenities = {
-            $all: Array.isArray(amenities) ? amenities : [amenities]
+    // Handle amenities
+    if (typeof req.body.amenities === 'string') {
+        hotelData.amenities = req.body.amenities.split(',');
+    }
+    if (typeof req.body.address === 'string') {
+        hotelData.address = JSON.parse(req.body.address);
+    }
+    // Handle files using the stored filenames
+    if (req.files) {
+        if (req.files.mainImage) {
+            hotelData.mainImage = req.files.mainImage[0].filename;
+        }
+        if (req.files.images) {
+            hotelData.images = req.files.images.map(file => file.filename);
+        }
+    }
+
+    hotelData.owner = req.user._id;
+
+    // Ensure location is in correct GeoJSON format
+    if (hotelData.location && Array.isArray(hotelData.location.coordinates)) {
+        hotelData.location = {
+            type: 'Point',
+            coordinates: [
+                parseFloat(hotelData.location.coordinates[0]),
+                parseFloat(hotelData.location.coordinates[1])
+            ]
         };
     }
 
-    if (owner) {
-        query.owner = owner;
+    // Set default location if not provided
+    if (!hotelData.location) {
+        hotelData.location = {
+            type: 'Point',
+            coordinates: [0, 0] // Default coordinates
+        };
     }
 
-    // Fetch hotels
-    const hotels = await hotelModel.find(query)
-        .populate('amenities', 'name icon')
-        .populate('owner', 'name email')
-        .sort(sort)
-        .skip((page - 1) * limit)
-        .limit(parseInt(limit));
-
-    const transformedHotels = hotels.map(hotel => {
-        const hotelObj = hotel.toObject();
-
-        if (hotelObj.mainImage) {
-            hotelObj.mainImage = `/uploads/hotels/${hotelObj.mainImage}`;
-        }
-
-        if (hotelObj.images && hotelObj.images.length > 0) {
-            hotelObj.images = hotelObj.images.map(img => `/uploads/hotels/${img}`);
-        }
-
-        if (hotelObj.amenities) {
-            hotelObj.amenities = hotelObj.amenities.map(amenity => ({
-                ...amenity,
-                icon: amenity.icon ? `/amenities/${amenity.icon}` : null
-            }));
-        }
-
-        return hotelObj;
+    // Log the data before saving
+    console.log('Hotel Data before save:', {
+        ...hotelData,
+        files: req.files // Log files information
     });
+    console.log("after parse", hotelData)
 
-    const total = await hotelModel.countDocuments(query);
+    const hotel = new hotelModel(hotelData);
+    await hotel.save();
 
-    return res.json({
-        hotels: transformedHotels,
-        pagination: {
-            total,
-            page: parseInt(page),
-            pages: Math.ceil(total / limit)
-        }
-    });
+    // Transform the response to include full image URLs
+    const response = hotel.toObject();
+    if (response.mainImage) {
+        response.mainImage = `/uploads/hotels/${response.mainImage}`;
+    }
+    if (response.images && response.images.length > 0) {
+        response.images = response.images.map(img => `/uploads/hotels/${img}`);
+    }
+
+    return response;
 }));
-
 
 // Update hotel
 router.put('/:hotelId', verifyToken, (req, res, next) => {
